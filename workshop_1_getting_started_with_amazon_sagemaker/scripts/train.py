@@ -1,4 +1,6 @@
 from transformers import AutoModelForSequenceClassification, Trainer, TrainingArguments, AutoTokenizer
+from transformers.trainer_utils import get_last_checkpoint
+
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from datasets import load_from_disk
 import random
@@ -23,7 +25,7 @@ if __name__ == "__main__":
 
     # Data, model, and output directories
     parser.add_argument("--output_data_dir", type=str, default=os.environ["SM_OUTPUT_DATA_DIR"])
-    parser.add_argument("--model_dir", type=str, default=os.environ["SM_MODEL_DIR"])
+    parser.add_argument("--output_dir", type=str, default=os.environ["SM_MODEL_DIR"])
     parser.add_argument("--n_gpus", type=str, default=os.environ["SM_NUM_GPUS"])
     parser.add_argument("--training_dir", type=str, default=os.environ["SM_CHANNEL_TRAIN"])
     parser.add_argument("--test_dir", type=str, default=os.environ["SM_CHANNEL_TEST"])
@@ -55,12 +57,12 @@ if __name__ == "__main__":
         return {"accuracy": acc, "f1": f1, "precision": precision, "recall": recall}
 
     # download model from model hub
-    model = AutoModelForSequenceClassification.from_pretrained(args.model_name)
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(args.model_id)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_id)
 
     # define training args
     training_args = TrainingArguments(
-        output_dir=args.model_dir,
+        output_dir=args.output_dir,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.train_batch_size,
         per_device_eval_batch_size=args.eval_batch_size,
@@ -85,7 +87,12 @@ if __name__ == "__main__":
     )
 
     # train model
-    trainer.train()
+    if get_last_checkpoint(args.output_dir) is not None:
+        logger.info("***** continue training *****")
+        last_checkpoint = get_last_checkpoint(args.output_dir)
+        trainer.train(resume_from_checkpoint=last_checkpoint)
+    else:
+        trainer.train()
 
     # evaluate model
     eval_result = trainer.evaluate(eval_dataset=test_dataset)
@@ -97,4 +104,4 @@ if __name__ == "__main__":
             writer.write(f"{key} = {value}\n")
 
     # Saves the model to s3
-    trainer.save_model(args.model_dir)
+    trainer.save_model(args.output_dir)
