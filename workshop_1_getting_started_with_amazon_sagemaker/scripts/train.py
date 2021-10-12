@@ -3,12 +3,10 @@ from transformers.trainer_utils import get_last_checkpoint
 
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from datasets import load_from_disk
-import random
 import logging
 import sys
 import argparse
 import os
-import torch
 
 if __name__ == "__main__":
 
@@ -63,6 +61,7 @@ if __name__ == "__main__":
     # define training args
     training_args = TrainingArguments(
         output_dir=args.output_dir,
+        overwrite_output_dir=True if get_last_checkpoint(args.output_dir) is not None else False,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.train_batch_size,
         per_device_eval_batch_size=args.eval_batch_size,
@@ -70,6 +69,7 @@ if __name__ == "__main__":
         fp16=args.fp16,
         evaluation_strategy="epoch",
         save_strategy="epoch",
+        save_total_limit=2,
         logging_dir=f"{args.output_data_dir}/logs",
         learning_rate=float(args.learning_rate),
         load_best_model_at_end=True,
@@ -104,4 +104,4 @@ if __name__ == "__main__":
             writer.write(f"{key} = {value}\n")
 
     # Saves the model to s3
-    trainer.save_model(args.output_dir)
+    trainer.save_model(os.environ["SM_MODEL_DIR"])
