@@ -62,7 +62,7 @@ Click on Accept Terms & Login
 
 * Make sure to increase the Volume Size of the Notebook if you want to work with big models and datasets
 * Add your IAM_Role with permissions to run your SageMaker Training And Inference Jobs
-* Add the Workshop Github Repository to the Notebook to preload the notebooks: `https://github.com/philschmid/prosus-sagemaker-huggingface-workshop.git`
+* Add the Workshop Github Repository to the Notebook to preload the notebooks: `https://github.com/philschmid/huggingface-sagemaker-workshop-series.git`
 
 ![setup10](./imgs/setup10.png)
 
