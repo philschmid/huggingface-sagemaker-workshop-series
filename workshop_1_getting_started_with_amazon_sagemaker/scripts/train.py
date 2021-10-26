@@ -113,6 +113,7 @@ if __name__ == "__main__":
         print(f"***** Eval results *****")
         for key, value in sorted(eval_result.items()):
             writer.write(f"{key} = {value}\n")
+            print(f"{key} = {value}\n")
 
     # Saves the model to s3 uses os.environ["SM_MODEL_DIR"] to make sure checkpointing works
     trainer.save_model(os.environ["SM_MODEL_DIR"])
