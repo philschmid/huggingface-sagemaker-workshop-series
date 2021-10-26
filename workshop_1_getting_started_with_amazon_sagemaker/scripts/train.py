@@ -7,8 +7,8 @@ import sys
 import numpy as np
 import torch
 from datasets import load_from_disk, load_metric
-from transformers import (AutoModelForSequenceClassification, AutoTokenizer,
-                          Trainer, TrainingArguments)
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, Trainer, TrainingArguments
+from transformers.trainer_utils import get_last_checkpoint
 
 if __name__ == "__main__":
 
@@ -19,12 +19,13 @@ if __name__ == "__main__":
     parser.add_argument("--train_batch_size", type=int, default=32)
     parser.add_argument("--eval_batch_size", type=int, default=64)
     parser.add_argument("--warmup_steps", type=int, default=500)
-    parser.add_argument("--model_name", type=str)
+    parser.add_argument("--model_id", type=str)
     parser.add_argument("--learning_rate", type=str, default=5e-5)
+    parser.add_argument("--fp16", type=bool, default=True)
 
     # Data, model, and output directories
     parser.add_argument("--output_data_dir", type=str, default=os.environ["SM_OUTPUT_DATA_DIR"])
-    parser.add_argument("--model_dir", type=str, default=os.environ["SM_MODEL_DIR"])
+    parser.add_argument("--output_dir", type=str, default=os.environ["SM_MODEL_DIR"])
     parser.add_argument("--n_gpus", type=str, default=os.environ["SM_NUM_GPUS"])
     parser.add_argument("--training_dir", type=str, default=os.environ["SM_CHANNEL_TRAIN"])
     parser.add_argument("--test_dir", type=str, default=os.environ["SM_CHANNEL_TEST"])
@@ -70,14 +71,20 @@ if __name__ == "__main__":
 
     # define training args
     training_args = TrainingArguments(
-        output_dir=args.model_dir,
+        output_dir=args.output_dir,
+        overwrite_output_dir=True if get_last_checkpoint(args.output_dir) is not None else False,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.train_batch_size,
         per_device_eval_batch_size=args.eval_batch_size,
         warmup_steps=args.warmup_steps,
+        fp16=args.fp16,
         evaluation_strategy="epoch",
+        save_strategy="epoch",
+        save_total_limit=2,
         logging_dir=f"{args.output_data_dir}/logs",
         learning_rate=float(args.learning_rate),
+        load_best_model_at_end=True,
+        metric_for_best_model="accuracy",
     )
 
     # create Trainer instance
@@ -91,7 +98,12 @@ if __name__ == "__main__":
     )
 
     # train model
-    trainer.train()
+    if get_last_checkpoint(args.output_dir) is not None:
+        logger.info("***** continue training *****")
+        last_checkpoint = get_last_checkpoint(args.output_dir)
+        trainer.train(resume_from_checkpoint=last_checkpoint)
+    else:
+        trainer.train()
 
     # evaluate model
     eval_result = trainer.evaluate(eval_dataset=test_dataset)
@@ -102,5 +114,5 @@ if __name__ == "__main__":
         for key, value in sorted(eval_result.items()):
             writer.write(f"{key} = {value}\n")
 
-    # Saves the model to s3
-    trainer.save_model(args.model_dir)
+    # Saves the model to s3 uses os.environ["SM_MODEL_DIR"] to make sure checkpointing works
+    trainer.save_model(os.environ["SM_MODEL_DIR"])
