@@ -19,6 +19,7 @@ class ModelDeployment(StepCollection):
         self,
         model_name: str,
         registered_model: _RegisterModelStep,
+        endpoint_instance_type,
         autoscaling_policy: dict = None,
     ):
         self.name = "sagemaker-pipelines-model-deployment"
@@ -26,11 +27,12 @@ class ModelDeployment(StepCollection):
         self.lambda_role = self.create_lambda_role(self.name)
         #        Use the current time to define unique names for the resources created
         current_time = time.strftime("%m-%d-%H-%M-%S", time.localtime())
+
         steps = []
         lambda_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "deploy_handler.py")
         # Lambda helper class can be used to create the Lambda function
-        func = Lambda(
-            function_name=f"{self.name}-{model_name}",
+        self.func = Lambda(
+            function_name=f"{self.name}-{current_time}",
             execution_role_arn=self.lambda_role,
             script=lambda_file,
             handler="lambda_deployer.lambda_handler",
@@ -48,12 +50,13 @@ class ModelDeployment(StepCollection):
         # The inputs provided to the Lambda function can be retrieved via the `event` object within the `lambda_handler` function
         # in the Lambda
         lambda_step = LambdaStep(
-            name="LambdaStepHuggingFaceDeploy",
-            lambda_func=func,
+            name="HuggingFaceModelDeployment",
+            lambda_func=self.func,
             inputs={
                 "model_name": model_name + current_time,
                 "endpoint_config_name": model_name + current_time,
                 "endpoint_name": model_name,
+                "endpoint_instance_type": endpoint_instance_type,
                 "model_package_arn": self.model_package_arn,
                 "role": self.lambda_role,
             },
