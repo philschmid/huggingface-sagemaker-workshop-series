@@ -35,7 +35,7 @@ class ModelDeployment(StepCollection):
             function_name=f"{self.name}-{current_time}",
             execution_role_arn=self.lambda_role,
             script=lambda_file,
-            handler="lambda_deployer.lambda_handler",
+            handler="deploy_handler.lambda_handler",
             timeout=600,
             memory_size=256,
         )
