@@ -56,7 +56,7 @@ class ModelDeployment(StepCollection):
             inputs={
                 "model_name": model_name + current_time,
                 "endpoint_config_name": model_name + current_time,
-                "endpoint_name": model_name + current_time,
+                "endpoint_name": model_name,
                 "endpoint_instance_type": endpoint_instance_type,
                 "model_package_arn": self.model_package_arn,
                 "role": sagemaker_endpoint_role,
