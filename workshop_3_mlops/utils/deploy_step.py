@@ -20,6 +20,7 @@ class ModelDeployment(StepCollection):
         model_name: str,
         registered_model: _RegisterModelStep,
         endpoint_instance_type,
+        role: str,
         autoscaling_policy: dict = None,
     ):
         self.name = "sagemaker-pipelines-model-deployment"
@@ -58,7 +59,7 @@ class ModelDeployment(StepCollection):
                 "endpoint_name": model_name,
                 "endpoint_instance_type": endpoint_instance_type,
                 "model_package_arn": self.model_package_arn,
-                "role": self.lambda_role,
+                "role": role,
             },
             outputs=[output_param_1, output_param_2, output_param_3],
         )
