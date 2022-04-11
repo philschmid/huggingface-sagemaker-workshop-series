@@ -21,8 +21,8 @@ def plot_metrics(perf_metrics, current_optim_type):
 
     plt.ylim(80,100)
     # Use the slowest model to define the x-axis range
-    xlim = int(perf_metrics["roberta-large"]["time_p99_ms"] + 3)
-    plt.xlim(1, xlim+20)
+    xlim = int(perf_metrics["roberta-large"]["time_p99_ms"] + 10)
+    plt.xlim(0, xlim)
     plt.ylabel("Accuracy (%)")
     plt.xlabel("p99 latency (ms)")
     plt.show()
