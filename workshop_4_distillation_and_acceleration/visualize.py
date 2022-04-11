@@ -19,7 +19,7 @@ def plot_metrics(perf_metrics, current_optim_type):
     for handle in legend.legendHandles:
         handle.set_sizes([20])
 
-    plt.ylim(90,98)
+    plt.ylim(80,100)
     # Use the slowest model to define the x-axis range
     xlim = int(perf_metrics["roberta-large"]["time_p99_ms"] + 3)
     plt.xlim(1, xlim+20)
