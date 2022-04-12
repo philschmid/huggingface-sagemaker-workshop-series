@@ -47,13 +47,10 @@ class DistillationTrainer(Trainer):
 
         # Soften probabilities and compute distillation loss
         loss_function = nn.KLDivLoss(reduction="batchmean")
-        loss_logits = (
-            loss_function(
-                F.log_softmax(outputs_student.logits / self.args.temperature, dim=-1),
-                F.softmax(outputs_teacher.logits / self.args.temperature, dim=-1),
-            )
-            * (self.args.temperature ** 2)
-        )
+        loss_logits = loss_function(
+            F.log_softmax(outputs_student.logits / self.args.temperature, dim=-1),
+            F.softmax(outputs_teacher.logits / self.args.temperature, dim=-1),
+        ) * (self.args.temperature**2)
         # Return weighted student loss
         loss = self.args.alpha * student_loss + (1.0 - self.args.alpha) * loss_logits
         return (loss, outputs_student) if return_outputs else loss
@@ -65,8 +62,8 @@ if __name__ == "__main__":
 
     # hyperparameters sent by the client are passed as command-line arguments to the script.
     parser.add_argument("--epochs", type=int, default=3)
-    parser.add_argument("--per_device_train_batch_size", type=int, default=512)
-    parser.add_argument("--per_device_eval_batch_size", type=int, default=512)
+    parser.add_argument("--per_device_train_batch_size", type=int, default=64)
+    parser.add_argument("--per_device_eval_batch_size", type=int, default=64)
     parser.add_argument("--alpha", type=float, default=0.5)
     parser.add_argument("--temperature", type=int, default=4)
     parser.add_argument("--teacher_id", type=str)
@@ -81,12 +78,6 @@ if __name__ == "__main__":
     # Data, model, and output directories
     parser.add_argument("--output_dir", type=str, default=os.environ["SM_MODEL_DIR"])
 
-    # Push to Hub Parameters
-    parser.add_argument("--push_to_hub", type=bool, default=True)
-    parser.add_argument("--hub_model_id", type=str, default=None)
-    parser.add_argument("--hub_strategy", type=str, default="every_save")
-    parser.add_argument("--hub_token", type=str, default=None)
-
     args, _ = parser.parse_known_args()
 
     # Set up logging
@@ -97,7 +88,6 @@ if __name__ == "__main__":
         handlers=[logging.StreamHandler(sys.stdout)],
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-
 
     # init tokenizer
     tokenizer = AutoTokenizer.from_pretrained(args.teacher_id)
@@ -157,11 +147,6 @@ if __name__ == "__main__":
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
         report_to="tensorboard",
-        # push to hub parameters
-        push_to_hub=args.push_to_hub,
-        hub_strategy="every_save",
-        hub_model_id=args.hub_model_id,
-        hub_token=args.hub_token,
         # distilation parameters
         alpha=args.alpha,
         temperature=args.temperature,
@@ -199,8 +184,6 @@ if __name__ == "__main__":
 
     # run hpo if arg is provided
     if args.run_hpo == "true":
-        # to avoind unnecessary pushes of bad models
-        training_args.push_to_hub = False
         training_args.output_dir = "./tmp/hpo"
         training_args.logging_dir = "./tmp/hpo/logs"
 
@@ -221,16 +204,11 @@ if __name__ == "__main__":
         for k, v in best_run.hyperparameters.items():
             setattr(training_args, k, v)
 
-        training_args.push_to_hub = args.push_to_hub
         training_args.output_dir = args.output_dir
         training_args.logging_dir = f"{args.output_dir}/logs"
 
     # train model with inital hyperparameters or hyperparameters from the best run
     trainer.train()
-
-    # save best model, metrics and create model card
-    trainer.create_model_card(model_name=args.hub_model_id)
-    trainer.push_to_hub()
 
     # Saves the model to s3 uses os.environ["SM_MODEL_DIR"] to make sure checkpointing works
     trainer.save_model(os.environ["SM_MODEL_DIR"])
