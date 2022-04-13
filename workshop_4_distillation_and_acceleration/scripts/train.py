@@ -24,12 +24,6 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=str, default=5e-5)
     parser.add_argument("--fp16", type=bool, default=True)
 
-    # Push to Hub Parameters
-    parser.add_argument("--push_to_hub", type=bool, default=True)
-    parser.add_argument("--hub_model_id", type=str, default=None)
-    parser.add_argument("--hub_strategy", type=str, default="every_save")
-    parser.add_argument("--hub_token", type=str, default=None)
-
     args, _ = parser.parse_known_args()
 
     # Set up logging
@@ -95,11 +89,6 @@ if __name__ == "__main__":
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
         report_to="tensorboard",
-        # push to hub parameters
-        push_to_hub=args.push_to_hub,
-        hub_strategy="every_save",
-        hub_model_id=args.hub_model_id,
-        hub_token=args.hub_token,
     )
 
     # create Trainer instance
@@ -124,11 +113,6 @@ if __name__ == "__main__":
         for key, value in sorted(eval_result.items()):
             writer.write(f"{key} = {value}\n")
             print(f"{key} = {value}\n")
-
-    # save best model, metrics and create model card
-    if args.push_to_hub:
-        trainer.create_model_card(model_name=args.hub_model_id)
-        trainer.push_to_hub()
         
     # Saves the model to s3 uses os.environ["SM_MODEL_DIR"] to make sure checkpointing works
     trainer.save_model(os.environ["SM_MODEL_DIR"])
