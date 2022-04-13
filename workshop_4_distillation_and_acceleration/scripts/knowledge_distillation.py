@@ -16,6 +16,7 @@ from transformers import (
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import time
 
 
 class DistillationTrainingArguments(TrainingArguments):
@@ -77,6 +78,12 @@ if __name__ == "__main__":
 
     # Data, model, and output directories
     parser.add_argument("--output_dir", type=str, default=os.environ["SM_MODEL_DIR"])
+
+    # Push to Hub Parameters
+    parser.add_argument("--push_to_hub", type=bool, default=True)
+    parser.add_argument("--hub_model_id", type=str, default=None)
+    parser.add_argument("--hub_strategy", type=str, default="every_save")
+    parser.add_argument("--hub_token", type=str, default=None)
 
     args, _ = parser.parse_known_args()
 
@@ -147,6 +154,11 @@ if __name__ == "__main__":
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
         report_to="tensorboard",
+        # push to hub parameters
+        push_to_hub=args.push_to_hub,
+        hub_strategy="every_save",
+        hub_model_id=args.hub_model_id,
+        hub_token=args.hub_token,
         # distilation parameters
         alpha=args.alpha,
         temperature=args.temperature,
@@ -184,6 +196,8 @@ if __name__ == "__main__":
 
     # run hpo if arg is provided
     if args.run_hpo == "true":
+        # to avoind unnecessary pushes of bad models
+        training_args.push_to_hub = False
         training_args.output_dir = "./tmp/hpo"
         training_args.logging_dir = "./tmp/hpo/logs"
 
@@ -204,11 +218,17 @@ if __name__ == "__main__":
         for k, v in best_run.hyperparameters.items():
             setattr(training_args, k, v)
 
+        training_args.push_to_hub = args.push_to_hub
         training_args.output_dir = args.output_dir
         training_args.logging_dir = f"{args.output_dir}/logs"
 
     # train model with inital hyperparameters or hyperparameters from the best run
     trainer.train()
+
+    # save best model, metrics and create model card
+    trainer.create_model_card(model_name=args.hub_model_id)
+    time.sleep(60)
+    trainer.push_to_hub()
 
     # Saves the model to s3 uses os.environ["SM_MODEL_DIR"] to make sure checkpointing works
     trainer.save_model(os.environ["SM_MODEL_DIR"])
