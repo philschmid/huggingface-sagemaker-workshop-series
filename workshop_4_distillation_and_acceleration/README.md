@@ -12,4 +12,4 @@ In the workshop, you will learn how to apply knowledge distillation to compress 
 
 🧑🏻‍💻 Code Assets: [workshop_4_distillation_and_acceleration](https://github.com/philschmid/huggingface-sagemaker-workshop-series/tree/main/workshop_4_distillation_and_acceleration)
 
-📺 Youtube: _Coming Soon_
+📺 Youtube: https://www.youtube.com/watch?v=3fulTyMXhWQ&ab_channel=HuggingFace
