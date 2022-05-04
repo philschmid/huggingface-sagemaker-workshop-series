@@ -134,10 +134,11 @@ if __name__ == "__main__":
             print(f"{key} = {value}\n")
 
     # save best model, metrics and create model card
-    trainer.create_model_card(model_name=args.hub_model_id)
-    # wait for asynchronous pushes to finish
-    time.sleep(180)
-    trainer.push_to_hub()
+    if args.push_to_hub:
+        trainer.create_model_card(model_name=args.hub_model_id)
+        # wait for asynchronous pushes to finish
+        time.sleep(180)
+        trainer.push_to_hub()
 
     # Saves the model to s3 uses os.environ["SM_MODEL_DIR"] to make sure checkpointing works
     trainer.save_model(os.environ["SM_MODEL_DIR"])
